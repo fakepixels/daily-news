@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, ChevronLeft, ChevronRight, Check, Search, X } from 'lucide-react';
+import { Sun, Moon, ChevronLeft, ChevronRight, Check, Search, X, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { NewsSourceResult } from './types/news';
 
@@ -179,6 +179,102 @@ function SearchBar({ onClose }: { onClose: () => void }) {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function AddSourceModal({ onClose, onAdd }: { onClose: () => void; onAdd: (url: string) => void }) {
+  const [url, setUrl] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleAdd = async () => {
+    if (!url.trim()) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Basic URL validation
+      new URL(url.trim());
+      onAdd(url.trim());
+      onClose();
+    } catch {
+      setError('Please enter a valid URL');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 bg-black/30 flex flex-col z-50 sm:items-center sm:justify-center"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <motion.div 
+        initial={{ opacity: 0, y: "100%" }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="bg-white dark:bg-gray-900 w-full sm:w-auto sm:rounded-xl sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh] mt-auto sm:mt-0 sm:mx-4"
+      >
+        <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAdd();
+            }}
+            placeholder="Enter RSS feed URL..."
+            className="flex-1 bg-transparent font-geist placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none text-base"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={loading}
+            className="px-4 py-1.5 bg-[#6a4ce1] text-white text-sm rounded-full hover:bg-[#5a3dd1] disabled:opacity-50 transition-colors font-geist font-medium min-w-[80px]"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+            ) : (
+              'Add'
+            )}
+          </button>
+        </div>
+
+        <div className="p-4">
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="text-red-500 mb-4 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg font-geist text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="mb-2">⚠️ Please note: A brand new source may not have been filtered and curated.</p>
+            <p>Make sure to add a valid RSS feed URL for the news source you want to follow.</p>
+          </div>
         </div>
       </motion.div>
     </motion.div>
@@ -455,6 +551,15 @@ export default function Home() {
     }
     return new Set();
   });
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAddSource, setShowAddSource] = useState(false);
+  const [customSources, setCustomSources] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('customSources');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
 
   // Save readArticles to localStorage whenever it changes
   useEffect(() => {
@@ -463,8 +568,21 @@ export default function Home() {
     }
   }, [readArticles]);
 
+  // Save customSources to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('customSources', JSON.stringify(customSources));
+    }
+  }, [customSources]);
+
   const fetcher = async (url: string) => {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ customSources }),
+    });
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.error || 'Failed to fetch news');
@@ -485,7 +603,6 @@ export default function Home() {
     sourceIndex: number;
     articleIndex: number;
   }>(null);
-  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -527,6 +644,17 @@ export default function Home() {
         <div className="flex gap-2 items-center">
           <button
             type="button"
+            onClick={() => setShowAddSource(true)}
+            className="group p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800 relative"
+            aria-label="Add news source"
+          >
+            <Plus className="h-5 w-5" />
+            <span className="absolute bottom-full right-0 mb-2 hidden group-hover:block whitespace-nowrap bg-gray-800 text-white text-xs px-2 py-1 rounded">
+              Add custom source
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowSearch(true)}
             className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
             aria-label="Search news"
@@ -539,6 +667,15 @@ export default function Home() {
       
       {showSearch && (
         <SearchBar onClose={() => setShowSearch(false)} />
+      )}
+
+      {showAddSource && (
+        <AddSourceModal 
+          onClose={() => setShowAddSource(false)} 
+          onAdd={(url) => {
+            setCustomSources(prev => [...prev, url]);
+          }} 
+        />
       )}
 
       <header className="text-center mb-16 pt-16">

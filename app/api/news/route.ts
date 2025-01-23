@@ -3,9 +3,10 @@ import { fetchAllNews } from '@/app/utils/api';
 
 export const revalidate = 300; // Cache for 5 minutes
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    const news = await fetchAllNews();
+    const { customSources } = await request.json();
+    const news = await fetchAllNews(customSources);
     return NextResponse.json(news, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'

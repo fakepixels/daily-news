@@ -304,31 +304,48 @@ export async function searchNews(source: NewsSource): Promise<NewsSourceResult> 
   }
 }
 
-export async function fetchAllNews() {
-  const results = await Promise.allSettled(
-    NEWS_SOURCES.map(async (source) => {
-      try {
-        return await searchNews(source);
-      } catch (error) {
-        console.error(`Error fetching news from ${source.name}:`, error);
-        return {
-          source: source.name,
-          error: error instanceof Error ? error.message : 'Failed to fetch news',
-          articles: []
-        };
-      }
-    })
-  );
+export async function fetchAllNews(customSources: string[] = []): Promise<NewsSourceResult[]> {
+  const results: NewsSourceResult[] = [];
 
-  return results.map(result => {
-    if (result.status === 'fulfilled') {
-      return result.value;
+  // Process default sources
+  for (const source of NEWS_SOURCES) {
+    try {
+      const result = await searchNews(source);
+      results.push(result);
+    } catch (error) {
+      console.error(`Error fetching news from ${source.name}:`, error);
+      results.push({
+        source: source.name,
+        articles: [],
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
     }
-    // This shouldn't happen since we catch errors above, but just in case
-    return {
-      source: 'Unknown Source',
-      error: 'Failed to fetch news',
-      articles: []
-    };
-  });
+  }
+
+  // Process custom sources
+  for (const sourceUrl of customSources) {
+    try {
+      const url = new URL(sourceUrl);
+      const domain = url.hostname.replace('www.', '');
+      const source: NewsSource = {
+        name: domain,
+        domain: domain
+      };
+      
+      const result = await searchNews(source);
+      results.push({
+        ...result,
+        source: `Custom: ${source.name}`
+      });
+    } catch (error) {
+      console.error(`Error fetching news from custom source ${sourceUrl}:`, error);
+      results.push({
+        source: `Custom: ${sourceUrl}`,
+        articles: [],
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    }
+  }
+
+  return results;
 }
