@@ -19,12 +19,9 @@ A modern, responsive tech news aggregator that fetches and displays the latest t
 ## Tech Stack
 
 - **Framework**: Next.js 15
-- **Styling**: Tailwind CSS
 - **Animation**: Framer Motion
-- **News API**: Exa.js
-- **AI Integration**: OpenAI GPT-3.5
-- **Icons**: Lucide React
-- **Theme**: next-themes
+- **News API**: Exa
+- **AI Integration**: OpenAI
 
 ## Getting Started
 
