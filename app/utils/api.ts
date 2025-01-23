@@ -153,7 +153,7 @@ export function isSectionHeader(title: string): boolean {
 // Helper function to get source-specific search query
 function getSearchQuery(source: NewsSource, category: 'TECH' | 'FINANCE' = 'TECH'): string {
   const techTerms = '(technology OR tech OR AI OR artificial intelligence OR software OR startup OR cybersecurity)';
-  const financeTerms = '(finance OR financial OR banking OR investment OR stock market OR cryptocurrency OR fintech OR economy)';
+  const financeTerms = '(finance OR financial OR banking OR investment OR "stock market" OR cryptocurrency OR fintech OR economy OR markets OR stocks OR bonds OR trading)';
   const baseTerms = category === 'TECH' ? techTerms : financeTerms;
   
   switch (source.domain) {
@@ -162,7 +162,9 @@ function getSearchQuery(source: NewsSource, category: 'TECH' | 'FINANCE' = 'TECH
         ? `site:${source.domain}/2024` 
         : `site:${source.domain} ${financeTerms}`;
     case 'bloomberg.com':
-      return `site:${source.domain} ${baseTerms} -"Bloomberg the Company"`;
+      return category === 'TECH'
+        ? `site:${source.domain} ${baseTerms} -"Bloomberg the Company"`
+        : `site:${source.domain}/news/articles OR site:${source.domain}/markets OR site:${source.domain}/economics OR site:${source.domain}/business -"Bloomberg the Company"`;
     default:
       return `site:${source.domain} ${baseTerms}`;
   }
@@ -252,7 +254,7 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
                                         result.url.includes('/business/') ||
                                         result.url.includes('/economics/') ||
                                         result.url.includes('/news/articles/') ||
-                                        /\b(market|stock|finance|bank|invest|trade|economy|fund|bond|equity)\b/i.test(result.title);
+                                        /\b(market|stock|finance|bank|invest|trade|economy|fund|bond|equity|nasdaq|dow|sp500|s&p|rate|fed|treasury)\b/i.test(result.title);
             if (!isValidFinanceArticle) {
               return false;
             }

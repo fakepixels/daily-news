@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Check, Search, X, Plus } from 'lucide-react';
+import { Sun, Moon, Check, Search, X, Plus, Info, ExternalLink } from 'lucide-react';
 import type { NewsSourceResult } from './types/news';
 
 interface SearchResult {
@@ -246,6 +246,136 @@ function ThemeToggle() {
   );
 }
 
+function ExplainModal({ 
+  onClose, 
+  title, 
+  summary 
+}: { 
+  onClose: () => void;
+  title: string;
+  summary: string;
+}) {
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchExplanation = async () => {
+      try {
+        const response = await fetch('/api/explain', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title, summary }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to get explanation');
+        }
+        
+        const data = await response.json();
+        setExplanation(data.explanation);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExplanation();
+  }, [title, summary]);
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex flex-col z-50 sm:items-center sm:justify-center">
+      <div className="bg-white dark:bg-gray-900 w-full sm:w-auto sm:rounded-xl sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh] mt-auto sm:mt-0 sm:mx-4">
+        <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <h2 className="text-lg font-semibold font-geist flex-1">Why This Matters</h2>
+        </div>
+
+        <div className="p-6">
+          <h3 className="font-semibold mb-4 font-geist">{title}</h3>
+          
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#6a4ce1]" />
+            </div>
+          ) : error ? (
+            <div className="text-red-500 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg font-geist text-sm">
+              {error}
+            </div>
+          ) : (
+            <p className="text-gray-700 dark:text-gray-300 font-geist text-sm leading-relaxed">
+              {explanation}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticleModal({ 
+  onClose, 
+  article 
+}: { 
+  onClose: () => void;
+  article: {
+    title: string;
+    summary: string;
+    url: string;
+    publishedDate: string;
+  };
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/30 flex flex-col z-50 sm:items-center sm:justify-center">
+      <div className="bg-white dark:bg-gray-900 w-full sm:w-auto sm:rounded-xl sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh] mt-auto sm:mt-0 sm:mx-4">
+        <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold font-geist">{article.title}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-geist">
+              {new Date(article.publishedDate).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors text-[#6a4ce1] dark:text-[#8e75ed]"
+            aria-label="Open original article"
+          >
+            <ExternalLink className="h-5 w-5" />
+          </a>
+        </div>
+
+        <div className="p-6">
+          <div className="font-geist text-base leading-relaxed text-gray-700 dark:text-gray-300">
+            {article.summary}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [category, setCategory] = useState<'TECH' | 'FINANCE'>('TECH');
@@ -259,6 +389,8 @@ export default function Home() {
   });
   const [showSearch, setShowSearch] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
+  const [showExplain, setShowExplain] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<{ title: string; summary: string } | null>(null);
   const [customSources, setCustomSources] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('customSources');
@@ -266,6 +398,13 @@ export default function Home() {
     }
     return [];
   });
+  const [showArticle, setShowArticle] = useState(false);
+  const [selectedFullArticle, setSelectedFullArticle] = useState<{
+    title: string;
+    summary: string;
+    url: string;
+    publishedDate: string;
+  } | null>(null);
 
   // Save readArticles to localStorage whenever it changes
   useEffect(() => {
@@ -365,6 +504,27 @@ export default function Home() {
         />
       )}
 
+      {showExplain && selectedArticle && (
+        <ExplainModal
+          onClose={() => {
+            setShowExplain(false);
+            setSelectedArticle(null);
+          }}
+          title={selectedArticle.title}
+          summary={selectedArticle.summary}
+        />
+      )}
+
+      {showArticle && selectedFullArticle && (
+        <ArticleModal
+          onClose={() => {
+            setShowArticle(false);
+            setSelectedFullArticle(null);
+          }}
+          article={selectedFullArticle}
+        />
+      )}
+
       <header className="text-center mb-16 pt-16">
         <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-9xl font-bold mb-4">
           DAILY{' '}
@@ -388,7 +548,6 @@ export default function Home() {
           >
             {category}
           </button>
-          {' '}NEWS
         </h1>
         <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
           {currentTime.toLocaleString('en-US', {
@@ -461,48 +620,79 @@ export default function Home() {
               {source.articles.map((article) => {
                 const isRead = readArticles.has(article.id);
                 return (
-                  <div key={article.id}>
-                    <button 
+                  <div key={article.id} className="h-[280px]">
+                    <button
                       type="button"
                       onClick={() => {
                         const newSet = new Set(readArticles);
                         newSet.add(article.id);
                         setReadArticles(newSet);
+                        setSelectedFullArticle({
+                          title: article.title,
+                          summary: article.summary,
+                          url: article.url,
+                          publishedDate: article.publishedDate,
+                        });
+                        setShowArticle(true);
                       }}
-                      className={`w-full text-left border dark:border-gray-700 rounded-lg p-6 pt-12 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group relative ${
-                        isRead ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
-                      }`}
+                      className="w-full h-full text-left"
                     >
-                      {isRead && (
-                        <div className="absolute top-3 right-3 flex items-center text-green-500 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          <span className="text-xs font-medium">Read</span>
+                      <article 
+                        className={`w-full h-full border dark:border-gray-700 rounded-lg p-6 pt-12 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group relative ${
+                          isRead ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
+                        }`}
+                      >
+                        {isRead && (
+                          <div className="absolute top-3 right-3 flex items-center text-green-500 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            <span className="text-xs font-medium">Read</span>
+                          </div>
+                        )}
+                        <div className="absolute top-3 left-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedArticle({
+                                title: article.title,
+                                summary: article.summary
+                              });
+                              setShowExplain(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-[#6a4ce1] dark:text-gray-500 dark:hover:text-[#8e75ed] transition-colors"
+                            aria-label="Why this matters"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
                         </div>
-                      )}
-                      <h3 className="font-semibold mb-2">
-                        <a
-                          href={article.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`${
+                        <div className="flex flex-col flex-grow min-h-0">
+                          <h3 className="font-semibold mb-2 line-clamp-2">
+                            <a
+                              href={article.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className={`${
+                                isRead 
+                                  ? 'text-gray-500 dark:text-gray-400' 
+                                  : 'text-gray-900 dark:text-gray-100 group-hover:text-[#6a4ce1] dark:group-hover:text-[#8e75ed]'
+                              } transition-colors duration-300`}
+                            >
+                              {article.title}
+                            </a>
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
+                            {new Date(article.publishedDate).toLocaleDateString()}
+                          </p>
+                          <p className={`line-clamp-3 text-sm ${
                             isRead 
-                              ? 'text-gray-500 dark:text-gray-400' 
-                              : 'text-gray-900 dark:text-gray-100 group-hover:text-[#6a4ce1] dark:group-hover:text-[#8e75ed]'
-                          } transition-colors duration-300`}
-                        >
-                          {article.title}
-                        </a>
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                        {new Date(article.publishedDate).toLocaleDateString()}
-                      </p>
-                      <p className={`line-clamp-3 flex-grow ${
-                        isRead 
-                          ? 'text-gray-500 dark:text-gray-500' 
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}>
-                        {article.summary}
-                      </p>
+                              ? 'text-gray-500 dark:text-gray-500' 
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}>
+                            {article.summary}
+                          </p>
+                        </div>
+                      </article>
                     </button>
                   </div>
                 );
