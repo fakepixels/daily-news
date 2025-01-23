@@ -5,8 +5,8 @@ export const revalidate = 300; // Cache for 5 minutes
 
 export async function POST(request: Request) {
   try {
-    const { customSources } = await request.json();
-    const news = await fetchAllNews(customSources);
+    const { customSources, category } = await request.json();
+    const news = await fetchAllNews(customSources, category);
     return NextResponse.json(news, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'

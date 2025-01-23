@@ -151,15 +151,18 @@ export function isSectionHeader(title: string): boolean {
 }
 
 // Helper function to get source-specific search query
-function getSearchQuery(source: NewsSource): string {
-  const baseTerms = '(technology OR tech OR AI OR artificial intelligence OR software OR startup OR cybersecurity)';
+function getSearchQuery(source: NewsSource, category: 'TECH' | 'FINANCE' = 'TECH'): string {
+  const techTerms = '(technology OR tech OR AI OR artificial intelligence OR software OR startup OR cybersecurity)';
+  const financeTerms = '(finance OR financial OR banking OR investment OR stock market OR cryptocurrency OR fintech OR economy)';
+  const baseTerms = category === 'TECH' ? techTerms : financeTerms;
   
   switch (source.domain) {
     case 'techcrunch.com':
-      return `site:${source.domain}/2024`; // Focus on recent articles
+      return category === 'TECH' 
+        ? `site:${source.domain}/2024` 
+        : `site:${source.domain} ${financeTerms}`;
     case 'bloomberg.com':
-      // Include both technology section and tech-related articles from other sections
-      return `site:${source.domain} (technology OR tech OR AI OR artificial intelligence OR software OR startup OR cybersecurity) -"Bloomberg the Company"`; 
+      return `site:${source.domain} ${baseTerms} -"Bloomberg the Company"`;
     default:
       return `site:${source.domain} ${baseTerms}`;
   }
@@ -191,14 +194,14 @@ export interface NewsSourceResult {
   error?: string;
 }
 
-export async function searchNews(source: NewsSource): Promise<NewsSourceResult> {
+export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE' = 'TECH'): Promise<NewsSourceResult> {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const dateString = oneWeekAgo.toISOString().split('T')[0];
 
   try {
     const searchResponse = await exa.searchAndContents(
-      getSearchQuery(source),
+      getSearchQuery(source, category),
       {
         numResults: 30, // Increased for more potential results
         text: true,
@@ -305,7 +308,7 @@ export async function searchNews(source: NewsSource): Promise<NewsSourceResult> 
   }
 }
 
-export async function fetchAllNews(customSources: string[] = []): Promise<NewsSourceResult[]> {
+export async function fetchAllNews(customSources: string[] = [], category: 'TECH' | 'FINANCE' = 'TECH'): Promise<NewsSourceResult[]> {
   const results: NewsSourceResult[] = [];
   const processedDomains = new Set<string>();
 
@@ -313,7 +316,7 @@ export async function fetchAllNews(customSources: string[] = []): Promise<NewsSo
   for (const source of NEWS_SOURCES) {
     try {
       processedDomains.add(source.domain);
-      const result = await searchNews(source);
+      const result = await searchNews(source, category);
       results.push(result);
     } catch (error) {
       console.error(`Error fetching news from ${source.name}:`, error);
@@ -349,7 +352,7 @@ export async function fetchAllNews(customSources: string[] = []): Promise<NewsSo
         domain: domain
       };
       
-      const result = await searchNews(source);
+      const result = await searchNews(source, category);
       results.push({
         ...result,
         source: `Custom: ${source.name}`,

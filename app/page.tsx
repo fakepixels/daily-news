@@ -562,6 +562,8 @@ function ArticleModal({
 export default function Home() {
   const [direction, setDirection] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [category, setCategory] = useState<'TECH' | 'FINANCE'>('TECH');
+  const [isHovering, setIsHovering] = useState(false);
   const [readArticles, setReadArticles] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('readArticles');
@@ -599,7 +601,7 @@ export default function Home() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ customSources }),
+      body: JSON.stringify({ customSources, category }),
     });
     if (!res.ok) {
       const error = await res.json();
@@ -608,7 +610,7 @@ export default function Home() {
     return res.json();
   };
 
-  const { data: news, error, isLoading } = useSWR<NewsSourceResult[]>('/api/news', fetcher, {
+  const { data: news, error, isLoading, mutate } = useSWR<NewsSourceResult[]>('/api/news', fetcher, {
     revalidateOnFocus: false,
     refreshInterval: 300000, // Refresh every 5 minutes
   });
@@ -696,7 +698,30 @@ export default function Home() {
       )}
 
       <header className="text-center mb-16 pt-16">
-        <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-9xl font-bold mb-4">DAILY TECH NEWS</h1>
+        <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-9xl font-bold mb-4">
+          DAILY{' '}
+          <button
+            type="button"
+            className={`relative cursor-pointer transition-colors duration-300 bg-transparent border-none font-inherit ${
+              isHovering ? 'text-[#6a4ce1] dark:text-[#8e75ed]' : ''
+            }`}
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+            onClick={() => {
+              setCategory(prev => prev === 'TECH' ? 'FINANCE' : 'TECH');
+              mutate(); // Refetch news when category changes
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setCategory(prev => prev === 'TECH' ? 'FINANCE' : 'TECH');
+                mutate(); // Refetch news when category changes
+              }
+            }}
+          >
+            {category}
+          </button>
+          {' '}NEWS
+        </h1>
         <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
           {currentTime.toLocaleString('en-US', {
             year: 'numeric',
