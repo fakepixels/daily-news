@@ -37,8 +37,7 @@ function ArticleModal({
   onPrevious,
   hasNext,
   hasPrevious,
-  direction,
-  isRead
+  direction
 }: { 
   article: { title: string; publishedDate: string; summary: string; url: string; sourceIndex?: number; }; 
   onClose: () => void;
@@ -47,7 +46,6 @@ function ArticleModal({
   hasNext: boolean;
   hasPrevious: boolean;
   direction: number;
-  isRead: boolean;
 }) {
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -390,16 +388,39 @@ export default function Home() {
                           articleIndex
                         });
                       }}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                      {new Date(article.publishedDate).toLocaleDateString()}
-                    </p>
-                    <p className="text-gray-700 dark:text-gray-300 line-clamp-3 flex-grow">
-                      {article.summary}
-                    </p>
-                  </button>
-                </div>
-              ))}
+                      className={`w-full text-left border dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group relative ${
+                        isRead ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
+                      }`}
+                    >
+                      {isRead && (
+                        <div className="absolute top-4 right-4 flex items-center text-green-500 text-sm">
+                          <Check className="h-4 w-4 mr-1" />
+                          <span>Read</span>
+                        </div>
+                      )}
+                      <h3 className="font-semibold mb-2">
+                        <span className={`${
+                          isRead 
+                            ? 'text-gray-500 dark:text-gray-400' 
+                            : 'text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                        } transition-colors duration-300`}>
+                          {article.title}
+                        </span>
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
+                        {new Date(article.publishedDate).toLocaleDateString()}
+                      </p>
+                      <p className={`line-clamp-3 flex-grow ${
+                        isRead 
+                          ? 'text-gray-500 dark:text-gray-500' 
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}>
+                        {article.summary}
+                      </p>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -409,8 +430,20 @@ export default function Home() {
         <ArticleModal
           key={`${selectedArticle.sourceIndex}-${selectedArticle.articleIndex}`}
           article={selectedArticle}
-          onClose={() => setSelectedArticle(null)}
+          onClose={() => {
+            setReadArticles(prev => {
+              const newSet = new Set(prev);
+              newSet.add(selectedArticle.id);
+              return newSet;
+            });
+            setSelectedArticle(null);
+          }}
           onNext={() => {
+            setReadArticles(prev => {
+              const newSet = new Set(prev);
+              newSet.add(selectedArticle.id);
+              return newSet;
+            });
             const currentSource = news[selectedArticle.sourceIndex];
             if (selectedArticle.articleIndex < currentSource.articles.length - 1) {
               const nextArticle = currentSource.articles[selectedArticle.articleIndex + 1];
@@ -433,6 +466,11 @@ export default function Home() {
             }
           }}
           onPrevious={() => {
+            setReadArticles(prev => {
+              const newSet = new Set(prev);
+              newSet.add(selectedArticle.id);
+              return newSet;
+            });
             if (selectedArticle.articleIndex > 0) {
               const currentSource = news[selectedArticle.sourceIndex];
               const prevArticle = currentSource.articles[selectedArticle.articleIndex - 1];
