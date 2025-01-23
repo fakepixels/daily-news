@@ -212,7 +212,7 @@ export default function Home() {
     <main className="container mx-auto px-4 py-8">
       <ThemeToggle />
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold mb-4">daily tech news</h1>
+        <h1 className="text-8xl font-bold mb-4">DAILY TECH NEWS</h1>
         <p className="text-gray-600 dark:text-gray-400">
           {currentTime.toLocaleString('en-US', {
             year: 'numeric',
