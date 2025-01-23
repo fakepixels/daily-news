@@ -7,8 +7,9 @@ export async function GET() {
     return NextResponse.json(news);
   } catch (error) {
     console.error('Error fetching news:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: 'Failed to fetch news' },
+      { error: `Failed to fetch news: ${errorMessage}` },
       { status: 500 }
     );
   }

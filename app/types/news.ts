@@ -21,6 +21,13 @@ export interface ArticleWithSummary {
 
 export interface NewsSourceResult {
   source: string;
-  articles: ArticleWithSummary[];
+  articles: {
+    id: string;
+    title: string;
+    url: string;
+    text: string;
+    summary: string;
+    publishedDate: string;
+  }[];
   error?: string;
 }
