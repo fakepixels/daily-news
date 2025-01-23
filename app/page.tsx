@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { NewsSourceResult } from './types/news';
 
 function ThemeToggle() {
@@ -29,9 +30,24 @@ function ThemeToggle() {
   );
 }
 
-function ArticleModal({ article, onClose }: { 
-  article: { title: string; publishedDate: string; summary: string; url: string; }; 
-  onClose: () => void; 
+function ArticleModal({ 
+  article, 
+  onClose,
+  onNext,
+  onPrevious,
+  hasNext,
+  hasPrevious,
+  direction,
+  isRead
+}: { 
+  article: { title: string; publishedDate: string; summary: string; url: string; sourceIndex?: number; }; 
+  onClose: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  direction: number;
+  isRead: boolean;
 }) {
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -68,90 +84,205 @@ function ArticleModal({ article, onClose }: {
       setShowExplanation(true);
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' && hasNext) {
+        onNext();
+      } else if (e.key === 'ArrowLeft' && hasPrevious) {
+        onPrevious();
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onNext, onPrevious, onClose, hasNext, hasPrevious]);
+
+  const overlayVariants = {
+    closed: {
+      opacity: 0,
+      backdropFilter: "blur(0px)"
+    },
+    open: {
+      opacity: 1,
+      backdropFilter: "blur(4px)"
+    }
+  };
+
+  const modalVariants = {
+    closed: {
+      scale: 0.8,
+      opacity: 0
+    },
+    open: {
+      scale: 1,
+      opacity: 1
+    }
+  };
+
+  const contentVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.95
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.95
+    })
+  };
+
+  const Content = () => (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <button
+          type="button"
+          onClick={onPrevious}
+          disabled={!hasPrevious}
+          className={`p-2 rounded-full ${hasPrevious ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'opacity-50 cursor-not-allowed'}`}
+          aria-label="Previous article"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!hasNext}
+          className={`p-2 rounded-full ${hasNext ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'opacity-50 cursor-not-allowed'}`}
+          aria-label="Next article"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      </div>
+      <h2 className="text-2xl font-bold mb-4">{article.title}</h2>
+      
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-blue-600 dark:text-blue-400">What?</h3>
+          <p className="text-gray-700 dark:text-gray-300">{article.summary}</p>
+        </div>
+        
+        <div>
+          <h3 className="font-semibold text-blue-600 dark:text-blue-400">When?</h3>
+          <p className="text-gray-700 dark:text-gray-300">
+            {new Date(article.publishedDate).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+        </div>
+        
+        <div>
+          <h3 className="font-semibold text-blue-600 dark:text-blue-400">Why?</h3>
+          {!showExplanation ? (
+            <button
+              type="button"
+              onClick={getExplanation}
+              disabled={loadingExplanation}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {loadingExplanation ? 'Generating explanation...' : 'Explain news'}
+            </button>
+          ) : (
+            <p className="text-gray-700 dark:text-gray-300">
+              {explanation}
+            </p>
+          )}
+        </div>
+      </div>
+      
+      <div className="mt-6">
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+        >
+          Read full article
+        </a>
+      </div>
+    </div>
+  );
+
   return (
-    <dialog 
-      open
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 w-full h-full m-0 border-none outline-none"
+    <motion.div
+      initial="closed"
+      animate="open"
+      variants={overlayVariants}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 w-full h-full"
       onClick={handleOverlayClick}
       onKeyDown={(e: React.KeyboardEvent) => {
         if (e.key === 'Escape') onClose();
         handleOverlayClick(e);
       }}
-      aria-modal="true"
+      transition={{ duration: 0.2 }}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="float-right text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          ✕
-        </button>
-        <h2 className="text-2xl font-bold mb-4">{article.title}</h2>
-        
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold text-blue-600 dark:text-blue-400">What?</h3>
-            <p className="text-gray-700 dark:text-gray-300">{article.summary}</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold text-blue-600 dark:text-blue-400">When?</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              {new Date(article.publishedDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold text-blue-600 dark:text-blue-400">Why?</h3>
-            {!showExplanation ? (
-              <button
-                type="button"
-                onClick={getExplanation}
-                disabled={loadingExplanation}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                {loadingExplanation ? 'Generating explanation...' : 'Explain news'}
-              </button>
-            ) : (
-              <p className="text-gray-700 dark:text-gray-300">
-                {explanation}
-              </p>
-            )}
-          </div>
-        </div>
-        
-        <div className="mt-6">
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+      <motion.div 
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative"
+        variants={modalVariants}
+        initial="closed"
+        animate="open"
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 25
+        }}
+      >
+        <AnimatePresence initial={false} mode="wait">
+          <motion.div
+            key={`${article.sourceIndex}-${direction}`}
+            variants={contentVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            custom={direction}
+            transition={{
+              x: { type: "spring", stiffness: 400, damping: 30 },
+              opacity: { duration: 0.15 },
+              scale: { type: "spring", stiffness: 400, damping: 25 }
+            }}
           >
-            Read full article
-          </a>
-        </div>
-      </div>
-    </dialog>
+            <Content />
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 }
 
 export default function Home() {
+  const [direction, setDirection] = useState(0);
   const [news, setNews] = useState<NewsSourceResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [readArticles, setReadArticles] = useState<Set<string>>(new Set());
   const [selectedArticle, setSelectedArticle] = useState<null | {
+    id: string;
     title: string;
-    publishedDate: string;
+    publishedDate: string;  
     summary: string;
     url: string;
+    sourceIndex: number;
+    articleIndex: number;
   }>(null);
 
   useEffect(() => {
@@ -244,17 +375,21 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {source.articles.map((article) => (
-                <div key={article.id}>
-                  <button 
-                    type="button"
-                    onClick={() => setSelectedArticle(article)}
-                    className="w-full text-left border dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800 cursor-pointer h-full flex flex-col group"
-                  >
-                    <h3 className="font-semibold mb-2">
-                      <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-                        {article.title}
-                      </span>
+              {source.articles.map((article) => {
+                const isRead = readArticles.has(article.id);
+                return (
+                  <div key={article.id}>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const sourceIndex = news.findIndex(s => s.source === source.source);
+                        const articleIndex = source.articles.findIndex(a => a.id === article.id);
+                        setSelectedArticle({
+                          ...article,
+                          sourceIndex,
+                          articleIndex
+                        });
+                      }}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
                       {new Date(article.publishedDate).toLocaleDateString()}
@@ -272,8 +407,62 @@ export default function Home() {
 
       {selectedArticle && (
         <ArticleModal
+          key={`${selectedArticle.sourceIndex}-${selectedArticle.articleIndex}`}
           article={selectedArticle}
           onClose={() => setSelectedArticle(null)}
+          onNext={() => {
+            const currentSource = news[selectedArticle.sourceIndex];
+            if (selectedArticle.articleIndex < currentSource.articles.length - 1) {
+              const nextArticle = currentSource.articles[selectedArticle.articleIndex + 1];
+              setDirection(1);
+              setSelectedArticle({
+                ...nextArticle,
+                sourceIndex: selectedArticle.sourceIndex,
+                articleIndex: selectedArticle.articleIndex + 1
+              });
+            } else if (selectedArticle.sourceIndex < news.length - 1) {
+              const nextSource = news[selectedArticle.sourceIndex + 1];
+              if (nextSource.articles && nextSource.articles.length > 0) {
+                setDirection(1);
+                setSelectedArticle({
+                  ...nextSource.articles[0],
+                  sourceIndex: selectedArticle.sourceIndex + 1,
+                  articleIndex: 0
+                });
+              }
+            }
+          }}
+          onPrevious={() => {
+            if (selectedArticle.articleIndex > 0) {
+              const currentSource = news[selectedArticle.sourceIndex];
+              const prevArticle = currentSource.articles[selectedArticle.articleIndex - 1];
+              setDirection(-1);
+              setSelectedArticle({
+                ...prevArticle,
+                sourceIndex: selectedArticle.sourceIndex,
+                articleIndex: selectedArticle.articleIndex - 1
+              });
+            } else if (selectedArticle.sourceIndex > 0) {
+              const prevSource = news[selectedArticle.sourceIndex - 1];
+              if (prevSource.articles && prevSource.articles.length > 0) {
+                setDirection(-1);
+                setSelectedArticle({
+                  ...prevSource.articles[prevSource.articles.length - 1],
+                  sourceIndex: selectedArticle.sourceIndex - 1,
+                  articleIndex: prevSource.articles.length - 1
+                });
+              }
+            }
+          }}
+          hasNext={
+            selectedArticle.articleIndex < news[selectedArticle.sourceIndex].articles.length - 1 ||
+            (selectedArticle.sourceIndex < news.length - 1 && news[selectedArticle.sourceIndex + 1].articles?.length > 0)
+          }
+          hasPrevious={
+            selectedArticle.articleIndex > 0 ||
+            (selectedArticle.sourceIndex > 0 && news[selectedArticle.sourceIndex - 1].articles?.length > 0)
+          }
+          direction={direction}
         />
       )}
     </main>

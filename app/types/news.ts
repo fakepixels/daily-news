@@ -28,6 +28,7 @@ export interface NewsSourceResult {
     text: string;
     summary: string;
     publishedDate: string;
+    isRead?: boolean;
   }[];
   error?: string;
 }
