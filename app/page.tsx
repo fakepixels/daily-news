@@ -187,7 +187,7 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+      className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
       aria-label="Toggle theme"
     >
       {theme === 'dark' ? (
@@ -340,12 +340,12 @@ function ArticleModal({
       
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold text-blue-600 dark:text-blue-400">What?</h3>
+          <h3 className="font-semibold text-[#6a4ce1] dark:text-[#8e75ed]">What?</h3>
           <p className="text-gray-700 dark:text-gray-300">{article.summary}</p>
         </div>
         
         <div>
-          <h3 className="font-semibold text-blue-600 dark:text-blue-400">When?</h3>
+          <h3 className="font-semibold text-[#6a4ce1] dark:text-[#8e75ed]">When?</h3>
           <p className="text-gray-700 dark:text-gray-300">
             {new Date(article.publishedDate).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -358,13 +358,13 @@ function ArticleModal({
         </div>
         
         <div>
-          <h3 className="font-semibold text-blue-600 dark:text-blue-400">Why?</h3>
+          <h3 className="font-semibold text-[#6a4ce1] dark:text-[#8e75ed]">Why?</h3>
           {!showExplanation ? (
             <button
               type="button"
               onClick={getExplanation}
               disabled={loadingExplanation}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-[#6a4ce1] text-white rounded hover:bg-[#5a3dd1] transition-colors disabled:opacity-50"
             >
               {loadingExplanation ? 'Generating explanation...' : 'Explain news'}
             </button>
@@ -381,7 +381,7 @@ function ArticleModal({
           href={article.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+          className="inline-block bg-[#6a4ce1] text-white px-4 py-2 rounded hover:bg-[#5a3dd1] transition-colors"
         >
           Read full article
         </a>
@@ -484,7 +484,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a4ce1]" />
       </div>
     );
   }
@@ -509,25 +509,27 @@ export default function Home() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="fixed top-4 right-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setShowSearch(true)}
-          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          aria-label="Search news"
-        >
-          <Search className="h-5 w-5" />
-        </button>
-        <ThemeToggle />
+      <div className="fixed top-0 right-0 left-0 z-40 flex justify-end p-4 bg-gradient-to-b from-white dark:from-gray-900 to-transparent">
+        <div className="flex gap-2 items-center">
+          <button
+            type="button"
+            onClick={() => setShowSearch(true)}
+            className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
+            aria-label="Search news"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+          <ThemeToggle />
+        </div>
       </div>
       
       {showSearch && (
         <SearchBar onClose={() => setShowSearch(false)} />
       )}
 
-      <header className="text-center mb-16">
-        <h1 className="text-9xl font-bold mb-4">DAILY TECH NEWS</h1>
-        <p className="text-gray-600 dark:text-gray-400">
+      <header className="text-center mb-16 pt-16">
+        <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-9xl font-bold mb-4">DAILY TECH NEWS</h1>
+        <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
           {currentTime.toLocaleString('en-US', {
             year: 'numeric',
             month: '2-digit',
@@ -541,7 +543,7 @@ export default function Home() {
             href="https://twitter.com/fkpxls" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-[#6a4ce1] dark:text-[#8e75ed] hover:underline"
           >
             @fkpxls
           </a>
@@ -587,7 +589,7 @@ export default function Home() {
                         <span className={`${
                           isRead 
                             ? 'text-gray-500 dark:text-gray-400' 
-                            : 'text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                            : 'text-gray-900 dark:text-gray-100 group-hover:text-[#6a4ce1] dark:group-hover:text-[#8e75ed]'
                         } transition-colors duration-300`}>
                           {article.title}
                         </span>
