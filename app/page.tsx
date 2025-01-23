@@ -2,9 +2,178 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Sun, Moon, ChevronLeft, ChevronRight, Check, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { NewsSourceResult } from './types/news';
+
+interface SearchResult {
+  id: string;
+  title: string;
+  url: string;
+  publishedDate: string;
+  summary: string;
+  source: string;
+}
+
+function SearchBar({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: query.trim() }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to search news');
+      }
+      
+      const data = await response.json();
+      setResults(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center p-4 z-50"
+      onClick={(e) => { 
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="bg-white dark:bg-gray-900 rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-medium font-geist">Search News</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        
+        <div className="flex gap-3 mb-8">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSearch();
+            }}
+            placeholder="Search for news..."
+            className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900 font-geist placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-[#6a4ce1] dark:focus:border-[#6a4ce1] transition-all"
+          />
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={loading}
+            className="px-6 py-3 bg-[#6a4ce1] text-white rounded-xl hover:bg-[#5a3dd1] disabled:opacity-50 transition-colors font-geist font-medium"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Searching</span>
+              </div>
+            ) : (
+              'Search'
+            )}
+          </button>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="text-red-500 mb-6 p-4 bg-red-50 dark:bg-red-900/10 rounded-lg font-geist"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          {results.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-4"
+            >
+              {results.map((article, index) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  key={article.id}
+                  className="border border-gray-100 dark:border-gray-800 rounded-xl p-5 bg-white dark:bg-gray-900"
+                >
+                  <div className="text-sm text-[#6a4ce1] dark:text-[#8e75ed] font-medium mb-2 font-geist">
+                    {article.source}
+                  </div>
+                  <h3 className="font-semibold mb-2 font-geist">
+                    <a
+                      href={article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-[#6a4ce1] dark:hover:text-[#8e75ed] transition-colors"
+                    >
+                      {article.title}
+                    </a>
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 font-geist">
+                    {new Date(article.publishedDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-300 font-geist leading-relaxed">
+                    {article.summary}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          {results.length === 0 && !loading && !error && query && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-gray-500 dark:text-gray-400 font-geist py-8"
+            >
+              No results found
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
@@ -18,7 +187,7 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="fixed top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+      className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
       aria-label="Toggle theme"
     >
       {theme === 'dark' ? (
@@ -282,6 +451,7 @@ export default function Home() {
     sourceIndex: number;
     articleIndex: number;
   }>(null);
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -339,7 +509,22 @@ export default function Home() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <ThemeToggle />
+      <div className="fixed top-4 right-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setShowSearch(true)}
+          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          aria-label="Search news"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+        <ThemeToggle />
+      </div>
+      
+      {showSearch && (
+        <SearchBar onClose={() => setShowSearch(false)} />
+      )}
+
       <header className="text-center mb-16">
         <h1 className="text-9xl font-bold mb-4">DAILY TECH NEWS</h1>
         <p className="text-gray-600 dark:text-gray-400">
@@ -388,14 +573,14 @@ export default function Home() {
                           articleIndex
                         });
                       }}
-                      className={`w-full text-left border dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group relative ${
+                      className={`w-full text-left border dark:border-gray-700 rounded-lg p-6 pt-12 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group relative ${
                         isRead ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
                       }`}
                     >
                       {isRead && (
-                        <div className="absolute top-4 right-4 flex items-center text-green-500 text-sm">
-                          <Check className="h-4 w-4 mr-1" />
-                          <span>Read</span>
+                        <div className="absolute top-3 right-3 flex items-center text-green-500 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                          <Check className="h-3.5 w-3.5 mr-1" />
+                          <span className="text-xs font-medium">Read</span>
                         </div>
                       )}
                       <h3 className="font-semibold mb-2">

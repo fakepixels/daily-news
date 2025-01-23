@@ -17,7 +17,7 @@ const openai = new OpenAI({
 });
 
 // Helper function to clean article text
-function cleanArticleText(text: string): string {
+export function cleanArticleText(text: string): string {
   if (!text) return '';
   
   const cleanText = text
@@ -45,7 +45,7 @@ function cleanArticleText(text: string): string {
 }
 
 // Helper function to check if title is a section header or navigation
-function isSectionHeader(title: string): boolean {
+export function isSectionHeader(title: string): boolean {
   const sectionPatterns = [
     /^Latest News$/i,
     /^Research and Analysis$/i,
@@ -72,9 +72,43 @@ function isSectionHeader(title: string): boolean {
     /^Opinion$/i,
     /^Bloomberg$/i,
     /^Menu$/i,
-    /^Subscribe$/i
+    /^Subscribe$/i,
+    /^Press Releases/i,
+    /^AP News$/i,
+    /^AP Top News$/i,
+    /^AP Business News$/i,
+    /^AP Technology News$/i,
+    /^Home$/i,
+    /^News$/i,
+    /^Business$/i,
+    /^About Us$/i,
+    /^Contact$/i,
+    /^Help$/i,
+    /^Support$/i,
+    /^Terms$/i,
+    /^Privacy$/i,
+    /^Cookie Policy$/i,
+    /^Sitemap$/i
   ];
-  return sectionPatterns.some(pattern => pattern.test(title));
+  
+  // Check if the title matches any of the patterns
+  if (sectionPatterns.some(pattern => pattern.test(title))) {
+    return true;
+  }
+  
+  // Additional checks for common non-headline patterns
+  if (
+    title.includes(' - AP News') || // Catches "Press Releases - AP News" and similar
+    title.includes('| AP News') ||
+    title.length < 20 || // Very short titles are likely navigation
+    /^[^a-zA-Z]*$/.test(title) || // Titles with no letters
+    /^(The|A|An) [A-Z][a-z]+ Page$/i.test(title) || // "The Something Page"
+    /^[A-Z\s]+$/.test(title) // All uppercase titles are usually sections
+  ) {
+    return true;
+  }
+  
+  return false;
 }
 
 // Helper function to get source-specific search query
