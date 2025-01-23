@@ -179,6 +179,7 @@ export const NEWS_SOURCES: NewsSource[] = [
 
 export interface NewsSourceResult {
   source: string;
+  sourceUrl?: string; // Optional URL for custom sources
   articles: {
     title: string;
     url: string;
@@ -306,10 +307,12 @@ export async function searchNews(source: NewsSource): Promise<NewsSourceResult> 
 
 export async function fetchAllNews(customSources: string[] = []): Promise<NewsSourceResult[]> {
   const results: NewsSourceResult[] = [];
+  const processedDomains = new Set<string>();
 
   // Process default sources
   for (const source of NEWS_SOURCES) {
     try {
+      processedDomains.add(source.domain);
       const result = await searchNews(source);
       results.push(result);
     } catch (error) {
@@ -322,8 +325,22 @@ export async function fetchAllNews(customSources: string[] = []): Promise<NewsSo
     }
   }
 
-  // Process custom sources
-  for (const sourceUrl of customSources) {
+  // Process custom sources (deduplicated)
+  const uniqueCustomSources = customSources.filter((sourceUrl) => {
+    try {
+      const url = new URL(sourceUrl);
+      const domain = url.hostname.replace('www.', '');
+      if (processedDomains.has(domain)) {
+        return false;
+      }
+      processedDomains.add(domain);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  for (const sourceUrl of uniqueCustomSources) {
     try {
       const url = new URL(sourceUrl);
       const domain = url.hostname.replace('www.', '');
@@ -335,12 +352,14 @@ export async function fetchAllNews(customSources: string[] = []): Promise<NewsSo
       const result = await searchNews(source);
       results.push({
         ...result,
-        source: `Custom: ${source.name}`
+        source: `Custom: ${source.name}`,
+        sourceUrl // Add the source URL to make the key unique
       });
     } catch (error) {
       console.error(`Error fetching news from custom source ${sourceUrl}:`, error);
       results.push({
         source: `Custom: ${sourceUrl}`,
+        sourceUrl,
         articles: [],
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       });

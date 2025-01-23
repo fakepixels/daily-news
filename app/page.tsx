@@ -185,7 +185,11 @@ function SearchBar({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AddSourceModal({ onClose, onAdd }: { onClose: () => void; onAdd: (url: string) => void }) {
+function AddSourceModal({ onClose, onAdd, existingSources }: { 
+  onClose: () => void; 
+  onAdd: (url: string) => void;
+  existingSources: string[];
+}) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -197,8 +201,22 @@ function AddSourceModal({ onClose, onAdd }: { onClose: () => void; onAdd: (url: 
     setError(null);
     
     try {
-      // Basic URL validation
-      new URL(url.trim());
+      const newUrl = new URL(url.trim());
+      const domain = newUrl.hostname.replace('www.', '');
+      
+      // Check if the domain already exists in existing sources
+      if (existingSources.some(source => {
+        try {
+          const existingUrl = new URL(source);
+          return existingUrl.hostname.replace('www.', '') === domain;
+        } catch {
+          return false;
+        }
+      })) {
+        setError('This news source has already been added');
+        return;
+      }
+
       onAdd(url.trim());
       onClose();
     } catch {
@@ -241,7 +259,7 @@ function AddSourceModal({ onClose, onAdd }: { onClose: () => void; onAdd: (url: 
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleAdd();
             }}
-            placeholder="Enter RSS feed URL..."
+            placeholder="Enter news feed URL..."
             className="flex-1 bg-transparent font-geist placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none text-base"
           />
           <button
@@ -645,13 +663,10 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setShowAddSource(true)}
-            className="group p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800 relative"
+            className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
             aria-label="Add news source"
           >
             <Plus className="h-5 w-5" />
-            <span className="absolute bottom-full right-0 mb-2 hidden group-hover:block whitespace-nowrap bg-gray-800 text-white text-xs px-2 py-1 rounded">
-              Add custom source
-            </span>
           </button>
           <button
             type="button"
@@ -674,7 +689,8 @@ export default function Home() {
           onClose={() => setShowAddSource(false)} 
           onAdd={(url) => {
             setCustomSources(prev => [...prev, url]);
-          }} 
+          }}
+          existingSources={customSources}
         />
       )}
 
@@ -702,8 +718,24 @@ export default function Home() {
       </header>
       <div className="w-full h-px bg-gray-200 dark:bg-gray-700 mb-16" />
       {news.map((source) => (
-        <div key={source.source} className="mb-16">
-          <h2 className="text-3xl font-bold mb-8 tracking-tight">{source.source}</h2>
+        <div key={source.sourceUrl || source.source} className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold tracking-tight">{source.source}</h2>
+            {source.source.startsWith('Custom:') && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (source.sourceUrl) {
+                    setCustomSources(prev => prev.filter(url => url !== source.sourceUrl));
+                  }
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+              >
+                <X className="h-4 w-4" />
+                <span>Remove source</span>
+              </button>
+            )}
+          </div>
           {source.error ? (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
               <p className="font-medium">Unable to load articles</p>

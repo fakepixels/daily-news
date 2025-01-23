@@ -21,6 +21,7 @@ export interface ArticleWithSummary {
 
 export interface NewsSourceResult {
   source: string;
+  sourceUrl?: string;
   articles: {
     id: string;
     title: string;
