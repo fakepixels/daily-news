@@ -10,6 +10,19 @@ if (!EXA_API_KEY) {
 
 const exa = new Exa(EXA_API_KEY);
 
+interface SearchResult {
+  id: string;
+  title: string;
+  url: string;
+  publishedDate: string;
+  summary: string;
+  source: string;
+}
+
+// Cache for search results
+const searchCache = new Map<string, { results: SearchResult[]; timestamp: number }>();
+const SEARCH_CACHE_TTL = 300000; // 5 minutes in milliseconds
+
 export async function POST(request: Request) {
   try {
     const { query } = await request.json();
@@ -18,6 +31,17 @@ export async function POST(request: Request) {
         { error: 'Search query is required' },
         { status: 400 }
       );
+    }
+
+    // Check cache first
+    const cacheKey = query.trim().toLowerCase();
+    const cached = searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+      return NextResponse.json(cached.results, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+        }
+      });
     }
 
     const oneWeekAgo = new Date();
@@ -31,11 +55,19 @@ export async function POST(request: Request) {
     const searchResponse = await exa.searchAndContents(
       fullQuery,
       {
-        numResults: 20,
+        numResults: 10, // Reduced from 20 to save credits
         text: true,
         startPublishedDate: dateString,
-        useAuthorExtraction: true,
-        useBodyExtraction: true
+        useAuthorExtraction: false, // Disabled as we don't use this
+        useBodyExtraction: true,
+        sortBy: 'relevance',
+        excludeSites: [
+          'bloomberg.com/press-releases',
+          'bloomberg.com/company',
+          'bloomberg.com/about',
+          'bloomberg.com/feedback',
+          'bloomberg.com/notices'
+        ]
       }
     );
 
@@ -58,24 +90,22 @@ export async function POST(request: Request) {
         return true;
       })
       .map(result => ({
-        id: result.id,
-        title: result.title,
+        id: result.id || crypto.randomUUID(),
+        title: result.title || 'Untitled',
         url: result.url,
-        publishedDate: result.publishedDate,
+        publishedDate: result.publishedDate || dateString,
         summary: `${cleanArticleText(result.text || '').slice(0, 200)}...`,
         source: NEWS_SOURCES.find(source => 
           result.url.includes(source.domain)
         )?.name || 'Unknown Source'
-      }))
-      .sort((a, b) => {
-        const dateA = new Date(a.publishedDate || '');
-        const dateB = new Date(b.publishedDate || '');
-        return dateB.getTime() - dateA.getTime();
-      });
+      }));
+
+    // Cache the results
+    searchCache.set(cacheKey, { results: validResults, timestamp: Date.now() });
 
     return NextResponse.json(validResults, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' // Cache for 1 minute, stale for 2 minutes
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
       }
     });
   } catch (error) {

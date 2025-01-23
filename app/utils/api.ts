@@ -20,6 +20,10 @@ const openai = new OpenAI({
 const summaryCache = new Map<string, { summary: string; timestamp: number }>();
 const SUMMARY_CACHE_TTL = 3600000; // 1 hour in milliseconds
 
+// Cache for Exa search results to avoid redundant API calls
+const newsCache = new Map<string, { results: NewsSourceResult; timestamp: number }>();
+const NEWS_CACHE_TTL = 300000; // 5 minutes in milliseconds
+
 async function getCachedSummary(title: string, content: string | null): Promise<string> {
   const cacheKey = `${title}-${content ? content.slice(0, 100) : ''}`; // Use title + start of content as cache key
   const cached = summaryCache.get(cacheKey);
@@ -197,6 +201,13 @@ export interface NewsSourceResult {
 }
 
 export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE' = 'TECH'): Promise<NewsSourceResult> {
+  const cacheKey = `${source.domain}-${category}`;
+  const cached = newsCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < NEWS_CACHE_TTL) {
+    return cached.results;
+  }
+
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const dateString = oneWeekAgo.toISOString().split('T')[0];
@@ -205,11 +216,19 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
     const searchResponse = await exa.searchAndContents(
       getSearchQuery(source, category),
       {
-        numResults: 30, // Increased for more potential results
+        numResults: 15, // Reduced from 30 to save credits while still getting enough results
         text: true,
         startPublishedDate: dateString,
-        useAuthorExtraction: true,
-        useBodyExtraction: true
+        useAuthorExtraction: false, // Disabled as we don't use this
+        useBodyExtraction: true,
+        sortBy: 'date', // Sort by date to get latest news first
+        excludeSites: [
+          'bloomberg.com/press-releases',
+          'bloomberg.com/company',
+          'bloomberg.com/about',
+          'bloomberg.com/feedback',
+          'bloomberg.com/notices'
+        ]
       }
     );
 
@@ -263,12 +282,7 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
 
         return true;
       })
-      .sort((a, b) => {
-        const dateA = new Date(a.publishedDate || '');
-        const dateB = new Date(b.publishedDate || '');
-        return dateB.getTime() - dateA.getTime();
-      })
-      .slice(0, 6);
+      .slice(0, 6); // Take only the first 6 articles after filtering
 
     if (validResults.length === 0) {
       console.warn(`No valid results found for ${source.name}`);
@@ -291,6 +305,7 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
           .replace(/\(Updates with.*?\)/i, '')
           .replace(/--With assistance from.*$/i, '');
       }
+      
       // Get summary from cache or generate new one
       const summary = await getCachedSummary(result.title || '', contentToSummarize);
 
@@ -307,10 +322,15 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
       };
     }));
 
-    return {
+    const newsResult = {
       source: source.name,
       articles
     };
+
+    // Cache the results
+    newsCache.set(cacheKey, { results: newsResult, timestamp: Date.now() });
+
+    return newsResult;
 
   } catch (error) {
     console.error(`Error fetching news from ${source.name}:`, error);
