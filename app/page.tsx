@@ -211,8 +211,8 @@ export default function Home() {
   return (
     <main className="container mx-auto px-4 py-8">
       <ThemeToggle />
-      <div className="text-center mb-12">
-        <h1 className="text-8xl font-bold mb-4">DAILY TECH NEWS</h1>
+      <header className="text-center mb-16">
+        <h1 className="text-9xl font-bold mb-4">DAILY TECH NEWS</h1>
         <p className="text-gray-600 dark:text-gray-400">
           {currentTime.toLocaleString('en-US', {
             year: 'numeric',
@@ -232,26 +232,27 @@ export default function Home() {
             @fkpxls
           </a>
         </p>
-      </div>
+      </header>
+      <div className="w-full h-px bg-gray-200 dark:bg-gray-700 mb-16" />
       {news.map((source) => (
-        <div key={source.source} className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">{source.source}</h2>
+        <div key={source.source} className="mb-16">
+          <h2 className="text-3xl font-bold mb-8 tracking-tight">{source.source}</h2>
           {source.error ? (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
               <p className="font-medium">Unable to load articles</p>
               <p className="text-sm">{source.error}</p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {source.articles.map((article) => (
                 <div key={article.id}>
                   <button 
                     type="button"
                     onClick={() => setSelectedArticle(article)}
-                    className="w-full text-left border dark:border-gray-700 rounded-lg p-4 shadow hover:shadow-lg transition-shadow bg-white dark:bg-gray-800 cursor-pointer h-full flex flex-col"
+                    className="w-full text-left border dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800 cursor-pointer h-full flex flex-col group"
                   >
                     <h3 className="font-semibold mb-2">
-                      <span className="text-blue-600 dark:text-blue-400 hover:underline">
+                      <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
                         {article.title}
                       </span>
                     </h3>
