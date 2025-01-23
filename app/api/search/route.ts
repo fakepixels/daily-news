@@ -73,13 +73,22 @@ export async function POST(request: Request) {
         return dateB.getTime() - dateA.getTime();
       });
 
-    return NextResponse.json(validResults);
+    return NextResponse.json(validResults, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' // Cache for 1 minute, stale for 2 minutes
+      }
+    });
   } catch (error) {
     console.error('Error searching news:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
       { error: `Failed to search news: ${errorMessage}` },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store'
+        }
+      }
     );
   }
-} 
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, ChevronLeft, ChevronRight, Check, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,20 +56,20 @@ function SearchBar({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center p-4 z-50"
-      onClick={(e) => { 
+      className="fixed inset-0 bg-black/30 flex flex-col z-50 sm:items-center sm:justify-center"
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        className="bg-white dark:bg-gray-900 rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        initial={{ opacity: 0, y: "100%" }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="bg-white dark:bg-gray-900 w-full sm:w-auto sm:rounded-xl sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh] mt-auto sm:mt-0 sm:mx-4"
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-medium font-geist">Search News</h2>
+        {/* Search Header */}
+        <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
           <button
             type="button"
             onClick={onClose}
@@ -76,9 +77,6 @@ function SearchBar({ onClose }: { onClose: () => void }) {
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
-        
-        <div className="flex gap-3 mb-8">
           <input
             type="text"
             value={query}
@@ -87,18 +85,17 @@ function SearchBar({ onClose }: { onClose: () => void }) {
               if (e.key === 'Enter') handleSearch();
             }}
             placeholder="Search for news..."
-            className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900 font-geist placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-[#6a4ce1] dark:focus:border-[#6a4ce1] transition-all"
+            className="flex-1 bg-transparent font-geist placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none text-base"
           />
           <button
             type="button"
             onClick={handleSearch}
             disabled={loading}
-            className="px-6 py-3 bg-[#6a4ce1] text-white rounded-xl hover:bg-[#5a3dd1] disabled:opacity-50 transition-colors font-geist font-medium"
+            className="px-4 py-1.5 bg-[#6a4ce1] text-white text-sm rounded-full hover:bg-[#5a3dd1] disabled:opacity-50 transition-colors font-geist font-medium min-w-[80px]"
           >
             {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Searching</span>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               </div>
             ) : (
               'Search'
@@ -106,70 +103,83 @@ function SearchBar({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="text-red-500 mb-6 p-4 bg-red-50 dark:bg-red-900/10 rounded-lg font-geist"
-            >
-              {error}
-            </motion.div>
-          )}
+        {/* Results Area */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-red-500 mb-4 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg font-geist text-sm"
+              >
+                {error}
+              </motion.div>
+            )}
 
-          {results.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-4"
-            >
-              {results.map((article, index) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  key={article.id}
-                  className="border border-gray-100 dark:border-gray-800 rounded-xl p-5 bg-white dark:bg-gray-900"
-                >
-                  <div className="text-sm text-[#6a4ce1] dark:text-[#8e75ed] font-medium mb-2 font-geist">
-                    {article.source}
-                  </div>
-                  <h3 className="font-semibold mb-2 font-geist">
-                    <a
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-[#6a4ce1] dark:hover:text-[#8e75ed] transition-colors"
-                    >
-                      {article.title}
-                    </a>
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 font-geist">
-                    {new Date(article.publishedDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                  <p className="text-gray-700 dark:text-gray-300 font-geist leading-relaxed">
-                    {article.summary}
-                  </p>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
+            {results.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-4"
+              >
+                {results.map((article, index) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    key={article.id}
+                    className="border border-gray-100 dark:border-gray-800 rounded-lg p-4 bg-white dark:bg-gray-900"
+                  >
+                    <div className="text-xs text-[#6a4ce1] dark:text-[#8e75ed] font-medium mb-1.5 font-geist">
+                      {article.source}
+                    </div>
+                    <h3 className="font-semibold mb-1.5 font-geist text-sm">
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-[#6a4ce1] dark:hover:text-[#8e75ed] transition-colors"
+                      >
+                        {article.title}
+                      </a>
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-xs mb-2 font-geist">
+                      {new Date(article.publishedDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                    <p className="text-gray-700 dark:text-gray-300 font-geist text-sm leading-relaxed">
+                      {article.summary}
+                    </p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
 
-          {results.length === 0 && !loading && !error && query && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center text-gray-500 dark:text-gray-400 font-geist py-8"
-            >
-              No results found
-            </motion.div>
-          )}
-        </AnimatePresence>
+            {results.length === 0 && !loading && !error && query && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center text-gray-500 dark:text-gray-400 font-geist py-8 text-sm"
+              >
+                No results found
+              </motion.div>
+            )}
+
+            {!query && !loading && !error && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-gray-500 dark:text-gray-400 font-geist py-8 text-sm"
+              >
+                Start typing to search for news
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -366,7 +376,7 @@ function ArticleModal({
               disabled={loadingExplanation}
               className="px-4 py-2 bg-[#6a4ce1] text-white rounded hover:bg-[#5a3dd1] transition-colors disabled:opacity-50"
             >
-              {loadingExplanation ? 'Generating explanation...' : 'Explain news'}
+              {loadingExplanation ? 'Brewing a hot take...' : 'Get the hot take'}
             </button>
           ) : (
             <p className="text-gray-700 dark:text-gray-300">
@@ -437,11 +447,35 @@ function ArticleModal({
 
 export default function Home() {
   const [direction, setDirection] = useState(0);
-  const [news, setNews] = useState<NewsSourceResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [readArticles, setReadArticles] = useState<Set<string>>(new Set());
+  const [readArticles, setReadArticles] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('readArticles');
+      return new Set(saved ? JSON.parse(saved) : []);
+    }
+    return new Set();
+  });
+
+  // Save readArticles to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('readArticles', JSON.stringify([...readArticles]));
+    }
+  }, [readArticles]);
+
+  const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to fetch news');
+    }
+    return res.json();
+  };
+
+  const { data: news, error, isLoading } = useSWR<NewsSourceResult[]>('/api/news', fetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 300000, // Refresh every 5 minutes
+  });
   const [selectedArticle, setSelectedArticle] = useState<null | {
     id: string;
     title: string;
@@ -461,27 +495,7 @@ export default function Home() {
     return () => clearInterval(timer); // Cleanup on unmount
   }, []);
 
-  useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        const response = await fetch('/api/news');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch news');
-        }
-        const data = await response.json();
-        setNews(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNews();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a4ce1]" />
@@ -489,7 +503,7 @@ export default function Home() {
     );
   }
 
-  if (error) {
+  if (error || !news) {
     return (
       <div className="text-red-500 text-center min-h-screen flex items-center justify-center">
         <div>
@@ -618,19 +632,15 @@ export default function Home() {
           key={`${selectedArticle.sourceIndex}-${selectedArticle.articleIndex}`}
           article={selectedArticle}
           onClose={() => {
-            setReadArticles(prev => {
-              const newSet = new Set(prev);
-              newSet.add(selectedArticle.id);
-              return newSet;
-            });
+            const newSet = new Set(readArticles);
+            newSet.add(selectedArticle.id);
+            setReadArticles(newSet);
             setSelectedArticle(null);
           }}
           onNext={() => {
-            setReadArticles(prev => {
-              const newSet = new Set(prev);
-              newSet.add(selectedArticle.id);
-              return newSet;
-            });
+            const newSet = new Set(readArticles);
+            newSet.add(selectedArticle.id);
+            setReadArticles(newSet);
             const currentSource = news[selectedArticle.sourceIndex];
             if (selectedArticle.articleIndex < currentSource.articles.length - 1) {
               const nextArticle = currentSource.articles[selectedArticle.articleIndex + 1];
@@ -653,11 +663,9 @@ export default function Home() {
             }
           }}
           onPrevious={() => {
-            setReadArticles(prev => {
-              const newSet = new Set(prev);
-              newSet.add(selectedArticle.id);
-              return newSet;
-            });
+            const newSet = new Set(readArticles);
+            newSet.add(selectedArticle.id);
+            setReadArticles(newSet);
             if (selectedArticle.articleIndex > 0) {
               const currentSource = news[selectedArticle.sourceIndex];
               const prevArticle = currentSource.articles[selectedArticle.articleIndex - 1];

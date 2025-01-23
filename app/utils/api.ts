@@ -16,6 +16,45 @@ const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
 
+// Cache for OpenAI summaries to avoid regenerating for the same content
+const summaryCache = new Map<string, { summary: string; timestamp: number }>();
+const SUMMARY_CACHE_TTL = 3600000; // 1 hour in milliseconds
+
+async function getCachedSummary(title: string, content: string | null): Promise<string> {
+  const cacheKey = `${title}-${content ? content.slice(0, 100) : ''}`; // Use title + start of content as cache key
+  const cached = summaryCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < SUMMARY_CACHE_TTL) {
+    return cached.summary;
+  }
+
+  try {
+    const summaryResponse = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a tech news summarizer. Create a concise 2-sentence summary (exactly 50 words) of the article. First sentence should state the main news. Second sentence should explain the significance or impact. Be specific with numbers, names, and facts. Never use phrases like 'the article discusses' or 'according to'."
+        },
+        {
+          role: "user",
+          content: `Title: ${title}\n\nContent: ${content || title}`
+        }
+      ],
+      max_tokens: 100,
+      temperature: 0.3
+    });
+
+    const summary = summaryResponse.choices[0].message.content || '';
+    summaryCache.set(cacheKey, { summary, timestamp: Date.now() });
+    return summary;
+  } catch (error) {
+    console.error('Error generating summary:', error);
+    // Return a fallback summary based on the title
+    return `${title}. This news could have significant implications for the tech industry.`;
+  }
+}
+
 // Helper function to clean article text
 export function cleanArticleText(text: string): string {
   if (!text) return '';
@@ -148,6 +187,7 @@ export interface NewsSourceResult {
     publishedDate: string;
     id: string;
   }[];
+  error?: string;
 }
 
 export async function searchNews(source: NewsSource): Promise<NewsSourceResult> {
@@ -233,25 +273,8 @@ export async function searchNews(source: NewsSource): Promise<NewsSourceResult> 
           .replace(/\(Updates with.*?\)/i, '')
           .replace(/--With assistance from.*$/i, '');
       }
-
-      // Generate a clean summary using GPT
-      const summaryResponse = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are a tech news summarizer. Create a concise 2-sentence summary (exactly 50 words) of the article. First sentence should state the main news. Second sentence should explain the significance or impact. Be specific with numbers, names, and facts. Never use phrases like 'the article discusses' or 'according to'."
-          },
-          {
-            role: "user",
-            content: `Title: ${result.title}\n\nContent: ${contentToSummarize}`
-          }
-        ],
-        max_tokens: 100,
-        temperature: 0.3
-      });
-
-      const summary = summaryResponse.choices[0].message.content || '';
+      // Get summary from cache or generate new one
+      const summary = await getCachedSummary(result.title || '', contentToSummarize);
 
       // Generate a unique ID for each article
       const uniqueId = `${source.name}-${index}-${result.url.split('/').pop()}`;
@@ -262,7 +285,7 @@ export async function searchNews(source: NewsSource): Promise<NewsSourceResult> 
         text: cleanText,
         summary,
         publishedDate: result.publishedDate || dateString,
-        id: uniqueId // Add a unique ID field
+        id: uniqueId
       };
     }));
 
@@ -273,13 +296,39 @@ export async function searchNews(source: NewsSource): Promise<NewsSourceResult> 
 
   } catch (error) {
     console.error(`Error fetching news from ${source.name}:`, error);
-    throw error;
+    return {
+      source: source.name,
+      error: error instanceof Error ? error.message : 'Failed to fetch news',
+      articles: []
+    };
   }
 }
 
 export async function fetchAllNews() {
-  const results = await Promise.all(
-    NEWS_SOURCES.map(source => searchNews(source))
+  const results = await Promise.allSettled(
+    NEWS_SOURCES.map(async (source) => {
+      try {
+        return await searchNews(source);
+      } catch (error) {
+        console.error(`Error fetching news from ${source.name}:`, error);
+        return {
+          source: source.name,
+          error: error instanceof Error ? error.message : 'Failed to fetch news',
+          articles: []
+        };
+      }
+    })
   );
-  return results;
+
+  return results.map(result => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+    // This shouldn't happen since we catch errors above, but just in case
+    return {
+      source: 'Unknown Source',
+      error: 'Failed to fetch news',
+      articles: []
+    };
+  });
 }
