@@ -1,4 +1,4 @@
-# Daily News
+# Daily Tech
 
 A modern, responsive news aggregator that fetches and displays the latest technology news from multiple trusted sources including Bloomberg, TechCrunch, New York Times, Associated Press, and any source of choice. 
 
@@ -8,10 +8,9 @@ A modern, responsive news aggregator that fetches and displays the latest techno
 
 - 🔄 Real-time news updates from multiple sources
 - 🌓 Dark/Light theme support
-- 🔍 Advanced search functionality
+- 🔍 Advanced search 
 - 📱 Responsive design
-- 🤖 AI-powered article explanations
-- ✨ Smooth animations and transitions
+- 🤖 Analyst article explanations
 - 📖 Article reading progress tracking
 - ⌨️ Keyboard navigation support
 - 🎯 Smart content filtering and cleaning
@@ -20,8 +19,8 @@ A modern, responsive news aggregator that fetches and displays the latest techno
 
 - **Framework**: Next.js 15
 - **Animation**: Framer Motion
-- **News API**: Exa
-- **AI Integration**: OpenAI
+- **News API**: [Exa](https://exa.ai/)
+- **AI Integration**: [OpenAI](https://openai.com/)
 
 ## Getting Started
 
