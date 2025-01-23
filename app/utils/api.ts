@@ -37,6 +37,7 @@ function isSectionHeader(title: string): boolean {
     /^Tech News$/i,
     /- Latest Headlines$/i,
     /^Technology$/i,
+    /^Technology - Bloomberg$/i,
     /^Top News$/i,
     /^More:$/i,
     /^Forums:$/i,
