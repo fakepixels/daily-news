@@ -311,13 +311,13 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
+      className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
       aria-label="Toggle theme"
     >
       {theme === 'dark' ? (
-        <Sun className="h-5 w-5" />
+        <Sun className="h-4 w-4 sm:h-5 sm:w-5" />
       ) : (
-        <Moon className="h-5 w-5" />
+        <Moon className="h-4 w-4 sm:h-5 sm:w-5" />
       )}
     </button>
   );
@@ -632,8 +632,9 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex flex-col justify-center items-center min-h-screen gap-3">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a4ce1]" />
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-geist">daily news incoming</p>
       </div>
     );
   }
@@ -658,23 +659,23 @@ export default function Home() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="fixed top-0 right-0 left-0 z-40 flex justify-end p-4 bg-gradient-to-b from-white dark:from-gray-900 to-transparent">
-        <div className="flex gap-2 items-center">
+      <div className="fixed top-0 right-0 left-0 z-40 flex justify-end p-2 sm:p-4 bg-gradient-to-b from-white dark:from-gray-900 to-transparent">
+        <div className="flex gap-1.5 sm:gap-2 items-center">
           <button
             type="button"
             onClick={() => setShowAddSource(true)}
-            className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
+            className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
             aria-label="Add news source"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <button
             type="button"
             onClick={() => setShowSearch(true)}
-            className="p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
+            className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border border-gray-100 dark:border-gray-800"
             aria-label="Search news"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <ThemeToggle />
         </div>
