@@ -236,14 +236,26 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
           return false;
         }
 
-        // For Bloomberg, accept articles from technology section or with tech-related content
+        // For Bloomberg, validate articles based on category
         if (source.domain === 'bloomberg.com') {
-          const isValidArticle = result.url.includes('/technology/') || 
-                                result.url.includes('/tech/') ||
-                                result.url.includes('/news/articles/') ||
-                                /\b(AI|software|tech|startup|cyber|bitcoin|crypto)\b/i.test(result.title);
-          if (!isValidArticle) {
-            return false;
+          if (category === 'TECH') {
+            const isValidTechArticle = result.url.includes('/technology/') || 
+                                     result.url.includes('/tech/') ||
+                                     result.url.includes('/news/articles/') ||
+                                     /\b(AI|software|tech|startup|cyber|bitcoin|crypto)\b/i.test(result.title);
+            if (!isValidTechArticle) {
+              return false;
+            }
+          } else if (category === 'FINANCE') {
+            const isValidFinanceArticle = result.url.includes('/markets/') ||
+                                        result.url.includes('/finance/') ||
+                                        result.url.includes('/business/') ||
+                                        result.url.includes('/economics/') ||
+                                        result.url.includes('/news/articles/') ||
+                                        /\b(market|stock|finance|bank|invest|trade|economy|fund|bond|equity)\b/i.test(result.title);
+            if (!isValidFinanceArticle) {
+              return false;
+            }
           }
         }
 
