@@ -2,6 +2,8 @@
 
 A modern, responsive news aggregator that fetches and displays the latest technology news from multiple trusted sources including Bloomberg, TechCrunch, New York Times, Associated Press, and any source of choice. 
 
+![Product Demo](product.gif)
+
 ## Features
 
 - 🔄 Real-time news updates from multiple sources
