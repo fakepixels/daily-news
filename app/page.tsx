@@ -71,7 +71,7 @@ function ArticleModal({ article, onClose }: {
   return (
     <dialog 
       open
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 w-full h-full m-0 border-none outline-none"
       onClick={handleOverlayClick}
       onKeyDown={(e: React.KeyboardEvent) => {
         if (e.key === 'Escape') onClose();
@@ -79,7 +79,7 @@ function ArticleModal({ article, onClose }: {
       }}
       aria-modal="true"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
         <button
           type="button"
           onClick={onClose}
