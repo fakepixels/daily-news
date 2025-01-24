@@ -377,7 +377,7 @@ function ArticleModal({
 }
 
 export default function Home() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<string>('');
   const [category, setCategory] = useState<'TECH' | 'FINANCE'>('TECH');
   const [isHovering, setIsHovering] = useState(false);
   const [readArticles, setReadArticles] = useState<Set<string>>(() => {
@@ -422,9 +422,20 @@ export default function Home() {
 
   // Update time every second
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }));
+    };
+    
+    updateTime(); // Set initial time
+    const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -448,9 +459,18 @@ export default function Home() {
     fetcher,
     {
       revalidateOnFocus: false,
-      refreshInterval: 300000, // Refresh every 5 minutes
+      refreshInterval: 60000, // Refresh every minute
+      revalidateOnMount: true, // Force revalidation on mount
+      dedupingInterval: 0, // Disable deduping to ensure fresh data
+      refreshWhenHidden: true, // Continue refreshing when tab is hidden
+      refreshWhenOffline: false // Don't refresh when offline
     }
   );
+
+  // Force refresh on mount
+  useEffect(() => {
+    mutate();
+  }, [mutate]);
 
   // Function to handle source removal
   const handleRemoveSource = (sourceUrl: string) => {
@@ -537,28 +557,14 @@ export default function Home() {
             onMouseLeave={() => setIsHovering(false)}
             onClick={() => {
               setCategory(prev => prev === 'TECH' ? 'FINANCE' : 'TECH');
-              mutate(); // Refetch news when category changes
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                setCategory(prev => prev === 'TECH' ? 'FINANCE' : 'TECH');
-                mutate(); // Refetch news when category changes
-              }
+              mutate();
             }}
           >
             {category}
           </button>
         </h1>
         <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-          {currentTime.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          })} - built by{' '}
+          {currentTime || ''} - built by{' '}
           <a 
             href="https://twitter.com/fkpxls" 
             target="_blank" 
@@ -621,52 +627,54 @@ export default function Home() {
                 const isRead = readArticles.has(article.id);
                 return (
                   <div key={article.id} className="h-[280px]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newSet = new Set(readArticles);
-                        newSet.add(article.id);
-                        setReadArticles(newSet);
-                        setSelectedFullArticle({
-                          title: article.title,
-                          summary: article.summary,
-                          url: article.url,
-                          publishedDate: article.publishedDate,
-                        });
-                        setShowArticle(true);
-                      }}
-                      className="w-full h-full text-left"
-                    >
-                      <article 
-                        className={`w-full h-full border dark:border-gray-700 rounded-lg p-6 pt-12 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group relative ${
-                          isRead ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
-                        }`}
-                      >
+                    <div className="relative h-full">
+                      <div className="absolute top-3 right-3 z-10">
                         {isRead && (
-                          <div className="absolute top-3 right-3 flex items-center text-green-500 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                          <div className="flex items-center text-green-500 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
                             <Check className="h-3.5 w-3.5 mr-1" />
                             <span className="text-xs font-medium">Read</span>
                           </div>
                         )}
-                        <div className="absolute top-3 left-3 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedArticle({
-                                title: article.title,
-                                summary: article.summary
-                              });
-                              setShowExplain(true);
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-[#6a4ce1] dark:text-gray-500 dark:hover:text-[#8e75ed] transition-colors"
-                            aria-label="Why this matters"
-                          >
-                            <Info className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="flex flex-col flex-grow min-h-0">
-                          <h3 className="font-semibold mb-2 line-clamp-2">
+                      </div>
+                      <div className="absolute top-3 left-3 z-10">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedArticle({
+                              title: article.title,
+                              summary: article.summary
+                            });
+                            setShowExplain(true);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-[#6a4ce1] dark:text-gray-500 dark:hover:text-[#8e75ed] transition-colors"
+                          aria-label="Why this matters"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSet = new Set(readArticles);
+                          newSet.add(article.id);
+                          setReadArticles(newSet);
+                          setSelectedFullArticle({
+                            title: article.title,
+                            summary: article.summary,
+                            url: article.url,
+                            publishedDate: article.publishedDate,
+                          });
+                          setShowArticle(true);
+                        }}
+                        className="w-full h-full text-left"
+                      >
+                        <article 
+                          className={`w-full h-full border dark:border-gray-700 rounded-lg p-6 pt-12 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group relative ${
+                            isRead ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
+                          }`}
+                        >
+                          <div className="flex flex-col flex-grow min-h-0">
+                            <h3 className="font-semibold mb-2 line-clamp-2">
                             <a
                               href={article.url}
                               target="_blank"
@@ -684,16 +692,17 @@ export default function Home() {
                           <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
                             {new Date(article.publishedDate).toLocaleDateString()}
                           </p>
-                          <p className={`line-clamp-3 text-sm ${
-                            isRead 
-                              ? 'text-gray-500 dark:text-gray-500' 
-                              : 'text-gray-700 dark:text-gray-300'
-                          }`}>
-                            {article.summary}
-                          </p>
-                        </div>
-                      </article>
-                    </button>
+                            <p className={`line-clamp-3 text-sm ${
+                              isRead 
+                                ? 'text-gray-500 dark:text-gray-500' 
+                                : 'text-gray-700 dark:text-gray-300'
+                            }`}>
+                              {article.summary}
+                            </p>
+                          </div>
+                        </article>
+                      </button>
+                    </div>
                   </div>
                 );
               })}

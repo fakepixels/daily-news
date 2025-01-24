@@ -159,16 +159,19 @@ function getSearchQuery(source: NewsSource, category: 'TECH' | 'FINANCE' = 'TECH
   const techTerms = '(technology OR tech OR AI OR artificial intelligence OR software OR startup OR cybersecurity)';
   const financeTerms = '(finance OR financial OR banking OR investment OR "stock market" OR cryptocurrency OR fintech OR economy OR markets OR stocks OR bonds OR trading)';
   const baseTerms = category === 'TECH' ? techTerms : financeTerms;
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = (today.getMonth() + 1).toString().padStart(2, '0');
   
   switch (source.domain) {
     case 'techcrunch.com':
       return category === 'TECH' 
-        ? `site:${source.domain}/2024` 
-        : `site:${source.domain} ${financeTerms}`;
+        ? `site:${source.domain}/${year}/${month}` 
+        : `site:${source.domain}/${year}/${month} ${financeTerms}`;
     case 'bloomberg.com':
       return category === 'TECH'
-        ? `site:${source.domain} ${baseTerms} -"Bloomberg the Company"`
-        : `site:${source.domain}/news/articles OR site:${source.domain}/markets OR site:${source.domain}/economics OR site:${source.domain}/business -"Bloomberg the Company"`;
+        ? `site:${source.domain}/news/articles/${year}/${month} ${baseTerms} -"Bloomberg the Company"`
+        : `site:${source.domain}/news/articles/${year}/${month} OR site:${source.domain}/markets OR site:${source.domain}/economics OR site:${source.domain}/business -"Bloomberg the Company"`;
     default:
       return `site:${source.domain} ${baseTerms}`;
   }
@@ -208,20 +211,20 @@ export async function searchNews(source: NewsSource, category: 'TECH' | 'FINANCE
     return cached.results;
   }
 
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const dateString = oneWeekAgo.toISOString().split('T')[0];
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const dateString = twoDaysAgo.toISOString().split('T')[0];
 
   try {
     const searchResponse = await exa.searchAndContents(
       getSearchQuery(source, category),
       {
-        numResults: 15, // Reduced from 30 to save credits while still getting enough results
+        numResults: 15,
         text: true,
         startPublishedDate: dateString,
-        useAuthorExtraction: false, // Disabled as we don't use this
+        useAuthorExtraction: false,
         useBodyExtraction: true,
-        sortBy: 'date', // Sort by date to get latest news first
+        sortBy: 'date',
         excludeSites: [
           'bloomberg.com/press-releases',
           'bloomberg.com/company',
